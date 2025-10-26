@@ -1,60 +1,76 @@
 'use client'
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import io from "socket.io-client";
 
+const ChatBox = () => {
+    const [msg, setMsg] = useState('');
+    const [msgs, setMsgs] = useState([]); // each message: { text, sender: 'me' | 'other' }
+    const [socket, setSocket] = useState(null);
+    const messagesEndRef = useRef(null);
 
-const Chat = () => {
+    useEffect(() => {
+        const newSocket = io('http://localhost:8080');
+        setSocket(newSocket);
 
+        newSocket.on('chat msg', incomingMsg => {
+            setMsgs(prev => [...prev, { text: incomingMsg, sender: 'other' }]);
+        });
 
-   const [msg, setMsg] = useState('');
-   const [socket, setSocket] = useState(null);
-   const [msgs, setMsgs] = useState([]);
+        return () => newSocket.close();
+    }, []);
 
+    const sendMsg = (e) => {
+        e.preventDefault();
+        if(socket && msg.trim() !== '') {
+            socket.emit('chat msg', msg);
+            setMsgs(prev => [...prev, { text: msg, sender: 'me' }]);
+            setMsg('');
+        }
+    }
 
-   useEffect(() => {
-        // Establish WebSocket connection
-       const newSocket = io('http://localhost:8080');
-       setSocket(newSocket);
-       // Clean up function
-       return () => newSocket.close();
-},[]);
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [msgs]);
 
+    return (
+        <div className=" mt-130 bg-gray-200 p-8 rounded-lg shadow-lg w-full max-w-md ">
+            {/* Chat card */}
+            <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md">
+                {/* Messages container */}
+                <div className="flex flex-col h-[70vh] overflow-hidden rounded-lg border border-gray-300">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-100">
+                        {msgs.map((m, i) => (
+                            <div
+                                key={i}
+                                className={`p-3 rounded-lg w-fit max-w-[80%] 
+                                    ${m.sender === 'me' ? 'bg-blue-600 text-white ml-auto' : 'bg-gray-300 text-gray-800'}`}
+                            >
+                                {m.text}
+                            </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </div>
 
-   const sendMsg = (e) => {
-       e.preventDefault();
-       if(socket) {
-  socket.emit('chat msg', msg);
-  setMsgs([...msgs, msg]);
-           setMsg('');
-       }
-   }
- 
- return (
-   <div>
-    <div className='msgs-container'>
-           {msgs.map((msg, index) => (
-               <div key={index} className='msg text-right m-5'>
-                   {msg}
-               </div>
-           ))}
-</div>
-       <form onSubmit={sendMsg} class="max-w-md mx-auto my-10">  
-           <div class="relative">  
-               <input type="text"
-                       value={msg}
-                       onChange={(e) => setMsg(e.target.value)}
-                       placeholder="Type your text here"
-                       required
-                       class="block w-full p-4 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"  />
-               <button type="submit"
-                       class="text-white absolute end-2.5 bottom-2.5 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                       Send
-               </button>
-           </div>
-       </form>
- </div>
- )
-}
+                    {/* Input */}
+                    <form onSubmit={sendMsg} className="border-t border-gray-300 p-3 flex items-center gap-1.5 bg-gray-100">
+                        <input
+                            type="text"
+                            value={msg}
+                            onChange={(e) => setMsg(e.target.value)}
+                            placeholder="Type a message..."
+                            className="flex-1 p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                            type="submit"
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                            Send
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+};
 
-
-export default Chat
+export default ChatBox;
