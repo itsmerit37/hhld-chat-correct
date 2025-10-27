@@ -1,34 +1,49 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
 import generateJWTTokenAndSetCookie from "../utils/generateToken.js";
-const signup = async (req, res) => {
+
+export const signup = async (req, res) => {
   try {
-    console.log("Signup request body:", req.body);
     const { username, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const foundUser = await User.findOne({ username });
-    if (foundUser) {
+
+    if (!username || !password)
+      return res.status(400).json({ message: "Username and password required" });
+
+    const existingUser = await User.findOne({ username });
+    if (existingUser)
       return res.status(409).json({ message: "Username already exists" });
-    } else {
-      const user = new User({ username: username, password: hashedPassword });
-      console.log(user);
-      await user.save();
-      console.log("User created:", user);
 
-      generateJWTTokenAndSetCookie(user._id, res);
-      res.status(201).json({ message: "User signed up successfully" });
-    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ username, password: hashedPassword });
+
+    await newUser.save();
+    generateJWTTokenAndSetCookie(newUser._id, res);
+    res.status(201).json({ message: "User signed up successfully" });
   } catch (error) {
-    console.log("Error details:", {
-      message: error.message,
-      stack: error.stack,
-    });
     console.error("Signup error:", error);
-
-    res.status(500).json({
-      message: "User registration failed",
-      error: error.message,
-    });
+    res.status(500).json({ message: "User registration failed" });
   }
 };
-export default signup;
+
+export const login = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
+    if (!user)
+      return res.status(401).json({ error: "Auth failed: user not found" });
+
+    const passwordMatch = await bcrypt.compare(password, user.password || "");
+    if (!passwordMatch)
+      return res.status(401).json({ error: "Auth failed: wrong password" });
+
+    generateJWTTokenAndSetCookie(user._id, res);
+    res.status(200).json({
+      _id: user._id,
+      username: user.username,
+      message: "Login successful"
+    });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({ error: "Login failed" });
+  }
+};

@@ -11,11 +11,12 @@ dotenv.config();
 const PORT = process.env.PORT || 8080;
 // use the port specified in the environment variable PORT, or default to port 5000
 const app = express();
+app.use(express.json());
 const server = http.createServer(app);
 const io = new Server(server, {
    cors: {
        allowedHeaders: ["*"],
-       origin: "*"
+       origin: "*"       
      }
 });
 
