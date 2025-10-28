@@ -5,6 +5,9 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectToMongoDB from "./db/connectToMongoDB.js";
 import authRouter from "./routes/auth.route.js";
+import userRouter from "./routes/user.route.js";
+import cookieParser from "cookie-parser";
+
 
 dotenv.config();
 
@@ -17,9 +20,11 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(cookieParser());
 
 // ✅ Mount the auth router here
 app.use("/auth", authRouter);
+app.use("/users", userRouter);
 
 app.get("/", (req, res) => {
   res.send("Welcome to HHLD Chat App!");
